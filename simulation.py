@@ -1,62 +1,73 @@
+"""Simulation of Server requests """
 from __future__ import division
-import random
 import urllib2
 import csv
-import re
 import argparse
 import sys
 import logging
-from datetime import datetime
 
 class Queue(object):
+    """ Python Queue object """
     def __init__(self):
+        """ Queue Constructor """
         self.items = []
 
     def isEmpty(self):
+        """ returns true if the array is empty """
         return self.items == []
 
     def enqueue(self, item):
+        """ Adds an item to the front of the queue """
         self.items.insert(0, item)
 
     def dequeue(self):
+        """ Removes an item from the end of the queue and returns the value """
         return self.items.pop()
 
     def size(self):
+        """ Returns the length of the queue """
         return len(self.items)
 
-class Server:
+class Server(object):
+    """ A server object class """
     def __init__(self):
+        """ Constructor - initializes currentTask and timeRemaining variables """
         self.currentTask = None
         self.timeRemaining = 0
 
     def tick(self):
+        """ If a task is running, decrement counter by 1, if counter is 0, clear the task """
         if self.currentTask:
             self.timeRemaining = self.timeRemaining - 1
             if self.timeRemaining <= 0:
                 self.currentTask = None
 
     def busy(self):
-        if self.currentTask != None:
-            return True
-        else:
-            return False
+        """ If there is a task running, return True """
+        return self.currentTask
 
     def startNext(self, newTask):
+        """ A task can be a request object that has the getProcess method"""
         self.currentTask = newTask
         self.timeRemaining = newTask.getProcess()
 
-class Request:
+class Request(object):
+    """ A web request object """
     def __init__(self, time, processTime):
+        """ Constructor, initializes the time, process time variables """
         self.timestamp = time
         self.process = processTime
 
     def getStamp(self):
+        """ getter for timestamp """
         return self.timestamp
 
     def getProcess(self):
+        """ getter for process """
         return self.process
 
     def waitTime(self, currentTime):
+        """ how much time to wait """
         return currentTime - self.timestamp
 
 def downloadData(url):
@@ -82,6 +93,7 @@ def processData(csvdata):
     return dictList
 
 def simulateOneServer(dictData):
+    """ Simulate One Server Function """
     server = Server()
     queue = Queue()
     waitTime = []
@@ -102,7 +114,8 @@ def simulateOneServer(dictData):
 
 
 def simulateManyServers(dictData, servers):
-    serverList = [ Server() for i in range(servers)]
+    """ Simulate Many Servers function """
+    serverList = [Server() for _ in range(servers)]
     queue = Queue()
     waitTime = []
     activeServer = 0
@@ -119,12 +132,13 @@ def simulateManyServers(dictData, servers):
         if not queue.isEmpty() and not serverList[activeServer].busy():
             nextTask = queue.dequeue()
             waitTime.append(nextTask.waitTime(reqSec))
-            serverList[i].startNext(nextTask)
+            serverList[activeServer].startNext(nextTask)
         serverList[activeServer].tick()
     averageWait = waitTime[-1] / len(waitTime)
     print("Many Server wait time {}").format("%10.7f" % averageWait)
 
 def main():
+    """ Main method, initialize argument parsers, set defaults """
     parser = argparse.ArgumentParser()
     parser.add_argument('--servers', help='Number of webservers')
     parser.add_argument('--url', help='URL of file to load')
