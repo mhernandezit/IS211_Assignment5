@@ -1,3 +1,4 @@
+from __future__ import division
 import random
 import urllib2
 import csv
@@ -96,26 +97,50 @@ def simulateOneServer(dictData):
             server.startNext(nextTask)
 
         server.tick()
-    averageWait = sum(waitTime) / len(waitTime)
-    print averageWait
+    averageWait = waitTime[-1] / len(waitTime)
+    print("Single Server wait time: {}").format("%10.7f" % averageWait)
 
 
 def simulateManyServers(dictData, servers):
-    print "todo build this function"
+    serverList = [ Server() for i in range(servers)]
+    queue = Queue()
+    waitTime = []
+    activeServer = 0
+    for row in dictData:
+        reqSec = int(row['requestTime'])
+        procTime = int(row['processTime'])
+        request = Request(reqSec, procTime)
+        queue.enqueue(request)
+        if activeServer == len(serverList) - 1:
+            activeServer = 0
+        else:
+            activeServer += 1
+
+        if not queue.isEmpty() and not serverList[activeServer].busy():
+            nextTask = queue.dequeue()
+            waitTime.append(nextTask.waitTime(reqSec))
+            serverList[i].startNext(nextTask)
+        serverList[activeServer].tick()
+    averageWait = waitTime[-1] / len(waitTime)
+    print("Many Server wait time {}").format("%10.7f" % averageWait)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--servers', help='Number of webservers')
-    parser.add_argument('--file', help='URL of file to load')
+    parser.add_argument('--url', help='URL of file to load')
     args = parser.parse_args()
-    #if args.url:
-    #   request = downloadData(args.url)
-    #url = 'http://s3.amazonaws.com/cuny-is211-spring2015/requests.csv'
-    request = downloadData('http://s3.amazonaws.com/cuny-is211-spring2015/requests.csv')
+    if args.url:
+        url = args.url
+    else:
+        url = 'http://s3.amazonaws.com/cuny-is211-spring2015/requests.csv'
+    request = downloadData(url)
     workingDict = processData(request)
-    #if args.servers:
-    #    simulateManyServers(workingDict, args.servers)
+    if args.servers:
+        cluster = args.servers
+    else:
+        cluster = 3
     simulateOneServer(workingDict)
+    simulateManyServers(workingDict, cluster)
 
 if __name__ == '__main__':
     LOGGER = logging.getLogger('assignment3')
